@@ -1,0 +1,183 @@
+// Prisma schema - Minha Viagem Agente de Vendas
+// Banco: SQLite (dev) — trocar para postgresql em producao
+// SQLite nao suporta enums nem arrays nativos — usamos String com convencoes
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Autenticacao / SaaS
+// ============================================================
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String
+  passwordHash    String
+  apiToken        String    @unique @default(cuid())
+  whatsappNumber  String?   @unique // E.164 ex: +5511999999999 — 1 licenca por numero
+  role            String    @default("AGENT") // SUPER_ADMIN | ADMIN | AGENT
+  isActive        Boolean   @default(true)    // para suspender conta SaaS
+  lastActiveAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  campaigns       Campaign[]
+  tasks           Task[]
+  hotels          Hotel[]
+  sends           CampaignSend[]
+}
+
+// ============================================================
+// Catalogo de Hoteis
+// ============================================================
+
+model Hotel {
+  id           String   @id @default(cuid())
+  name         String                          // "Xcaret Resort"
+  destination  String                          // "Cancun, Mexico"
+  stars        Int?                            // 1-5
+  description  String?                         // texto livre sobre o hotel
+  highlights   String   @default("[]")         // JSON array: ["All Inclusive","Spa","Kids Club"]
+  priceFrom    Float?                          // a partir de R$
+  images       String   @default("[]")         // JSON array de URLs
+  isActive     Boolean  @default(true)
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdBy    User     @relation(fields: [createdById], references: [id])
+}
+
+// ============================================================
+// Contatos
+// ============================================================
+
+model Contact {
+  id               String    @id @default(cuid())
+  name             String
+  phoneE164        String    @unique
+  encryptedEmail   String?
+  tags             String    @default("[]") // JSON array de strings
+  optInStatus      String    @default("PENDING") // PENDING | CONFIRMED | BLOCKED
+  optInSource      String?
+  optInTimestamp   DateTime?
+  optInIp          String?
+  blocked          Boolean   @default(false)
+  blockedAt        DateTime?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  sends            CampaignSend[]
+  events           ConversationEvent[]
+  leadStage        LeadStage?
+  tasks            Task[]
+}
+
+// ============================================================
+// Campanhas
+// ============================================================
+
+model Campaign {
+  id           String    @id @default(cuid())
+  name         String
+  destination  String
+  dateRange    String
+  offerText    String
+  inclusions   String    @default("[]") // JSON array
+  hotels       String    @default("[]") // JSON array de hoteis cadastrados
+  priceFrom    Float?
+  ctaText      String
+  landingUrl   String?
+  mediaAssets  String    @default("[]") // JSON array de URLs
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdById  String
+  createdBy    User      @relation(fields: [createdById], references: [id])
+
+  sends        CampaignSend[]
+}
+
+// ============================================================
+// Envios assistidos (log por contato)
+// ============================================================
+
+model CampaignSend {
+  id          String    @id @default(cuid())
+  campaignId  String?
+  contactId   String
+  userId      String?
+  hotelId     String?
+  status      String    @default("SENT") // SENT | REPLIED | CANCELLED
+  sentAt      DateTime  @default(now())
+  repliedAt   DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  campaign    Campaign? @relation(fields: [campaignId], references: [id])
+  contact     Contact   @relation(fields: [contactId], references: [id])
+  user        User?     @relation(fields: [userId], references: [id])
+
+  @@index([contactId])
+  @@index([sentAt])
+  @@index([userId])
+}
+
+// ============================================================
+// Estagio do lead no funil
+// ============================================================
+
+model LeadStage {
+  contactId String    @id
+  stage     String    @default("NEW") // NEW | CONTACTED | QUOTE_REQUESTED | PROPOSAL_SENT | CLOSED_WON | CLOSED_LOST | OPTED_OUT
+  updatedAt DateTime  @updatedAt
+
+  contact   Contact   @relation(fields: [contactId], references: [id])
+}
+
+// ============================================================
+// Eventos de conversa (auditoria e timeline)
+// ============================================================
+
+model ConversationEvent {
+  id          String    @id @default(cuid())
+  contactId   String
+  type        String    // INBOUND | OUTBOUND | TAG_CHANGE | STAGE_CHANGE | OPT_IN | OPT_OUT | TASK_CREATED | TASK_DONE | NOTE_ADDED
+  payload     String    @default("{}") // JSON object
+  createdAt   DateTime  @default(now())
+
+  contact     Contact   @relation(fields: [contactId], references: [id])
+
+  @@index([contactId])
+  @@index([createdAt])
+}
+
+// ============================================================
+// Tarefas de follow-up
+// ============================================================
+
+model Task {
+  id          String    @id @default(cuid())
+  contactId   String
+  userId      String
+  title       String
+  dueAt       DateTime?
+  done        Boolean   @default(false)
+  doneAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  contact     Contact   @relation(fields: [contactId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([contactId])
+  @@index([dueAt])
+}

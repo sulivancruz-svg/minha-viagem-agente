@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/users/new/page": "app/admin/users/new/page.js",
+  "/admin/users/page": "app/admin/users/page.js",
+  "/admin/users/[id]/page": "app/admin/users/[id]/page.js",
+  "/campaigns/page": "app/campaigns/page.js",
+  "/campaigns/new/page": "app/campaigns/new/page.js",
+  "/contacts/page": "app/contacts/page.js",
+  "/campaigns/[id]/page": "app/campaigns/[id]/page.js",
+  "/metrics/page": "app/metrics/page.js",
+  "/page": "app/page.js",
+  "/login/page": "app/login/page.js"
+}

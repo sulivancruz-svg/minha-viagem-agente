@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.env
+.env.local
+*.local
+.DS_Store
+*.log
+.pnpm-debug.log*
+
+# Extension build
+packages/extension/dist/
+
+# Backend build
+packages/backend/dist/
+
+# Dashboard build
+packages/dashboard/.next/
+packages/dashboard/out/
+
+# Database
+*.db
+*.db-journal
+packages/backend/prisma/dev.db*
+
+# Uploads / local assets
+packages/backend/uploads/
+packages/backend/.wwebjs_auth/
+packages/backend/.wwebjs_auth_live/

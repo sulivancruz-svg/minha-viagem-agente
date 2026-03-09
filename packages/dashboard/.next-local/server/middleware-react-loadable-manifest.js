@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST='{"app\\\\metrics\\\\page.tsx -> recharts":{"id":5716,"files":["static/chunks/716.daf140ae344821db.js"]}}';

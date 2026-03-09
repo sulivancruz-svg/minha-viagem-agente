@@ -1,0 +1,19 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          50:  '#f0fdf4',
+          100: '#dcfce7',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#075e54', // verde WhatsApp
+        },
+      },
+    },
+  },
+  plugins: [],
+}

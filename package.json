@@ -1,0 +1,24 @@
+{
+  "name": "minha-viagem-agente",
+  "private": true,
+  "version": "1.0.0",
+  "description": "CRM e agente de vendas para agentes de viagem via WhatsApp Web",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev:backend":   "pnpm --filter backend dev",
+    "dev:dashboard": "pnpm --filter dashboard dev",
+    "dev:extension": "pnpm --filter extension dev",
+    "build:all":     "pnpm --filter extension build && pnpm --filter backend build && pnpm --filter dashboard build",
+    "db:migrate":    "pnpm --filter backend db:migrate",
+    "db:generate":   "pnpm --filter backend db:generate",
+    "db:studio":     "pnpm --filter backend db:studio",
+    "db:seed":       "pnpm --filter backend db:seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
