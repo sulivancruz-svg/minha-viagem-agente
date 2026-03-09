@@ -390,3 +390,8 @@ Este sistema foi projetado para operar dentro das políticas da Meta e da LGPD b
 ## Licença
 
 Uso interno. Todos os direitos reservados.
+
+
+---
+
+> **Status:** Vercel deployment em progresso. Atualizado em 09/03/2025.
