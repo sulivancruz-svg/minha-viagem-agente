@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import type { LeadInfo, LeadStageType } from '../shared/types'
+import type { LeadInfo, LeadStageType, Hotel, Campaign } from '../shared/types'
+import { OfferBuilder } from './OfferBuilder'
 
 const STAGE_META: Record<LeadStageType, { label: string; color: string }> = {
   NEW:              { label: 'Novo Lead',        color: '#3b82f6' },
@@ -15,13 +16,29 @@ interface Props {
   contactId: string
   contactName: string
   lead: LeadInfo
+  hotels?: Hotel[]
+  campaigns?: Campaign[]
   disableActions?: boolean
   onStageChange: (stage: LeadStageType) => void
   onCreateTask:  (title: string, dueAt?: string) => void
   onBlock:       () => void
+  onSendOffer?:  (data: { campaignId?: string; hotelId: string; message: string }) => void
+  onOfferError?: (msg: string) => void
 }
 
-export function LeadCard({ contactName, lead, disableActions = false, onStageChange, onCreateTask, onBlock }: Props) {
+export function LeadCard({
+  contactId,
+  contactName,
+  lead,
+  hotels = [],
+  campaigns = [],
+  disableActions = false,
+  onStageChange,
+  onCreateTask,
+  onBlock,
+  onSendOffer,
+  onOfferError,
+}: Props) {
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [taskTitle,    setTaskTitle]    = useState('')
   const [taskDue,      setTaskDue]      = useState('')
@@ -108,6 +125,19 @@ export function LeadCard({ contactName, lead, disableActions = false, onStageCha
             </div>
           ))}
         </div>
+      )}
+
+      {/* Offer Builder - Montar oferta com hotel */}
+      {hotels.length > 0 && lead.phoneE164 && (
+        <OfferBuilder
+          contactId={contactId}
+          contactName={contactName}
+          phoneE164={lead.phoneE164}
+          hotels={hotels}
+          campaigns={campaigns}
+          onSendOffer={onSendOffer}
+          onError={onOfferError}
+        />
       )}
 
       {/* Acoes */}

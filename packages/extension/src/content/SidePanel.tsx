@@ -378,6 +378,19 @@ export function SidePanel({ currentChat, onClose }: Props) {
     safeSendMessage({ type: 'LOG_EVENT', contactId, eventType: 'OPT_OUT', payload: { source: 'extension' } })
   }, [contactId])
 
+  const handleSendOffer = useCallback((data: { campaignId?: string; hotelId: string; message: string }) => {
+    if (!contactId) return
+    safeSendMessage({
+      type: 'LOG_ASSISTED_SEND',
+      contactId,
+      campaignId: data.campaignId,
+      hotelId: data.hotelId,
+      notes: `Oferta enviada: ${data.message.split('\n')[0]}`,
+    }, () => {
+      setTodayActionMsg('✅ Oferta registrada no sistema.')
+    })
+  }, [contactId])
+
   const handleCompleteTask = useCallback((taskId: string) => {
     safeSendMessage({ type: 'COMPLETE_TASK', taskId })
     setLead(prev => prev ? {
@@ -1011,9 +1024,13 @@ export function SidePanel({ currentChat, onClose }: Props) {
                   contactId={contactId!}
                   contactName={effectiveChat.name}
                   lead={lead}
+                  hotels={hotels}
+                  campaigns={campaigns}
                   onStageChange={handleStageChange}
                   onCreateTask={handleCreateTask}
                   onBlock={handleBlock}
+                  onSendOffer={handleSendOffer}
+                  onOfferError={msg => setTodayActionMsg(`❌ ${msg}`)}
                   disableActions={!hasPhone}
                 />
               ) : (
