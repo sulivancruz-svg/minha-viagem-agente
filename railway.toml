@@ -1,0 +1,11 @@
+[build]
+builder = "nixpacks"
+
+[build.config]
+nixPackages = ["nodejs_20", "pnpm"]
+
+[nixpacks]
+providers = ["nodejs-pnpm"]
+
+[start]
+cmd = "pnpm --filter backend start"

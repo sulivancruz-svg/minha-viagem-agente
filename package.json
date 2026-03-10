@@ -9,6 +9,8 @@
     "dev:dashboard": "pnpm --filter dashboard dev",
     "dev:extension": "pnpm --filter extension dev",
     "build:all":     "pnpm --filter extension build && pnpm --filter backend build && pnpm --filter dashboard build",
+    "build":         "pnpm --filter backend build",
+    "start":         "pnpm --filter backend start",
     "db:migrate":    "pnpm --filter backend db:migrate",
     "db:generate":   "pnpm --filter backend db:generate",
     "db:studio":     "pnpm --filter backend db:studio",
