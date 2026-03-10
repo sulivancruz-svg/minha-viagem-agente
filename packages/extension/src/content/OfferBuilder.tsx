@@ -16,6 +16,13 @@ interface OfferDraft {
   selectedHotelId: string
   selectedCampaignId?: string
   customText?: string
+  selectedImageIndex: number // qual imagem será copiada
+}
+
+interface UploadedImage {
+  url: string
+  uploading?: boolean
+  error?: string
 }
 
 export function OfferBuilder({
@@ -30,9 +37,12 @@ export function OfferBuilder({
     selectedHotelId: hotels[0]?.id ?? '',
     selectedCampaignId: campaigns[0]?.id ?? '',
     customText: '',
+    selectedImageIndex: 0,
   })
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const selectedHotel = useMemo(
     () => hotels.find(h => h.id === draft.selectedHotelId) ?? null,
@@ -64,14 +74,23 @@ export function OfferBuilder({
     return `Oi ${contactName}! 👋\n\n${hotelInfo}${highlights}${customPart}\n\nInteressado? Posso enviar mais detalhes!`
   }, [selectedHotel, draft.customText, contactName])
 
+  // Combina imagens do hotel + uploadadas
+  const allImages = useMemo(() => {
+    return [
+      ...(selectedHotel?.images || []),
+      ...uploadedImages.map(u => u.url),
+    ]
+  }, [selectedHotel, uploadedImages])
+
   const copyImageToClipboard = async () => {
-    if (!selectedHotel?.images || selectedHotel.images.length === 0) {
-      onError?.('Este hotel não tem imagens para copiar')
+    const imagesToUse = allImages
+    if (!imagesToUse || imagesToUse.length === 0) {
+      onError?.('Nenhuma imagem disponível para copiar')
       return
     }
 
     try {
-      const imageUrl = selectedHotel.images[0]
+      const imageUrl = imagesToUse[draft.selectedImageIndex] || imagesToUse[0]
       const response = await fetch(imageUrl)
       const blob = await response.blob()
 
@@ -85,6 +104,61 @@ export function OfferBuilder({
     } catch (err) {
       onError?.(`Erro ao copiar imagem: ${err instanceof Error ? err.message : 'desconhecido'}`)
       return false
+    }
+  }
+
+  const handleUploadImage = async (file: File) => {
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      onError?.('Apenas imagens são suportadas no upload')
+      return
+    }
+
+    // Validar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      onError?.('Imagem muito grande (máximo 5MB)')
+      return
+    }
+
+    const tempImage: UploadedImage = { url: '', uploading: true }
+    setUploadedImages(prev => [...prev, tempImage])
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/hotels/upload-image', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const err = await response.text()
+        throw new Error(err || 'Erro ao fazer upload')
+      }
+
+      const data = await response.json() as { url: string }
+
+      // Atualizar imagem com URL
+      setUploadedImages(prev =>
+        prev.map(img =>
+          img === tempImage ? { url: data.url, uploading: false } : img
+        )
+      )
+    } catch (err) {
+      onError?.(`Erro no upload: ${err instanceof Error ? err.message : 'desconhecido'}`)
+      setUploadedImages(prev => prev.filter(img => img !== tempImage))
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleUploadImage(file)
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -228,19 +302,52 @@ export function OfferBuilder({
                 </div>
               )}
 
-              {selectedHotel.images.length > 0 && (
+              {allImages.length > 0 && (
                 <div style={styles.imagesWrap}>
-                  <span style={styles.infoLabel}>Imagens:</span>
+                  <span style={styles.infoLabel}>Imagens ({allImages.length}):</span>
                   <div style={styles.thumbs}>
-                    {selectedHotel.images.slice(0, 3).map((img, i) => (
-                      <img
+                    {allImages.map((img, i) => (
+                      <button
                         key={i}
-                        src={img}
-                        alt={`${selectedHotel.name} ${i + 1}`}
-                        style={styles.thumb}
-                      />
+                        type="button"
+                        onClick={() => setDraft({ ...draft, selectedImageIndex: i })}
+                        title={draft.selectedImageIndex === i ? 'Selecionada' : 'Clique para selecionar'}
+                        style={{
+                          ...styles.thumb,
+                          border: draft.selectedImageIndex === i ? '3px solid #10b981' : '1px solid #cbd5e1',
+                          background: 'transparent',
+                          padding: 0,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <img
+                          src={img}
+                          alt={`Imagem ${i + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      </button>
                     ))}
                   </div>
+
+                  {/* Upload button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      ...styles.uploadBtn,
+                      marginTop: 8,
+                      width: '100%',
+                    }}
+                  >
+                    + Upload Imagem
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                  />
                 </div>
               )}
             </div>
@@ -462,6 +569,17 @@ const styles = {
     borderRadius: 4,
     fontSize: 12,
     fontWeight: 700,
+    cursor: 'pointer',
+  } as React.CSSProperties,
+
+  uploadBtn: {
+    padding: '6px 10px',
+    background: '#0ea5e9',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 4,
+    fontSize: 11,
+    fontWeight: 600,
     cursor: 'pointer',
   } as React.CSSProperties,
 }
