@@ -109,12 +109,8 @@ async function handleStatusUpdate(status: WaStatus) {
   if (!newStatus) return
 
   // Schema atual nao tem providerMessageId/deliveredAt/readAt/lastError.
-  // Mantemos log de diagnostico sem quebrar o processamento.
-  console.log('[WhatsApp Status Update]', {
-    providerMessageId: status.id,
-    status: newStatus,
-    recipientId: status.recipient_id,
-  })
+  // TODO: Implementar rastreamento de status quando o schema for expandido
+  // Por enquanto, apenas ignoramos o status (não quebramos o processamento)
 }
 
 async function handleInboundMessage(msg: WaMessage) {
