@@ -1,13 +1,12 @@
 // Prisma schema - Minha Viagem Agente de Vendas
-// Banco: SQLite (dev) — trocar para postgresql em producao
-// SQLite nao suporta enums nem arrays nativos — usamos String com convencoes
+// Banco: PostgreSQL (producao Railway)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
