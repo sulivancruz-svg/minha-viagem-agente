@@ -5,7 +5,7 @@
   "scripts": {
     "dev":          "tsx watch src/index.ts",
     "build":        "npx prisma generate && tsc -p tsconfig.json",
-    "start":        "npx prisma db push --skip-generate && npx tsx prisma/seed.ts && node dist/index.js",
+    "start":        "npx prisma db push --skip-generate --accept-data-loss && npx tsx prisma/seed.ts || echo '[WARN] DB setup failed - starting server anyway'; node dist/index.js",
     "db:migrate":   "prisma migrate dev",
     "db:generate":  "prisma generate",
     "db:studio":    "prisma studio",
