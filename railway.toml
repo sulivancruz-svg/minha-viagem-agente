@@ -6,6 +6,7 @@ nixPackages = ["nodejs_20", "pnpm"]
 
 [nixpacks]
 providers = ["nodejs-pnpm"]
+buildCommand = "pnpm install && pnpm --filter backend build"
 
 [start]
 cmd = "pnpm --filter backend start"
