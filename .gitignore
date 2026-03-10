@@ -26,3 +26,6 @@ packages/backend/prisma/dev.db*
 packages/backend/uploads/
 packages/backend/.wwebjs_auth/
 packages/backend/.wwebjs_auth_live/
+
+.vercel
+.env*.local

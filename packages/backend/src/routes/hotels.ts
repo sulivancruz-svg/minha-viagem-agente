@@ -1,137 +1,242 @@
-// Rota de hoteis - Catalogo de hoteis para ofertas
-// CRUD completo + upload de imagens
+// CRUD de Hotéis - Catálogo para agentes de viagem
 
 import { Router } from 'express'
 import { z } from 'zod'
 import { PrismaClient } from '@prisma/client'
+import { requireAuth } from '../middleware/auth'
 import multer from 'multer'
 import path from 'path'
-import fs from 'fs'
-import { requireAuth } from '../middleware/auth'
+import { promises as fs } from 'fs'
 
 const router = Router()
 const prisma = new PrismaClient()
 
-const uploadDir = path.resolve(process.cwd(), 'uploads', 'hotel-images')
-fs.mkdirSync(uploadDir, { recursive: true })
+// ============================================================
+// Multer - Upload de imagens
+// ============================================================
+
+const uploadsDir = path.resolve(process.cwd(), 'uploads')
+
+// Criar diretório se não existir
+;(async () => {
+  try {
+    await fs.mkdir(uploadsDir, { recursive: true })
+  } catch (e) {
+    console.error('[Hotels] Erro ao criar diretório uploads:', e)
+  }
+})()
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir)
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(7)
+    const ext = path.extname(file.originalname)
+    cb(null, `hotel-${timestamp}-${random}${ext}`)
+  },
+})
 
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg'
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`)
-    },
-  }),
-  limits: { fileSize: 6 * 1024 * 1024 },
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Apenas JPEG, PNG, WebP e GIF são permitidos'))
+    }
+  },
 })
+
+// ============================================================
+// Validacao Zod
+// ============================================================
 
 const HotelSchema = z.object({
-  name:        z.string().min(2),
-  destination: z.string().min(2),
-  stars:       z.number().int().min(1).max(5).optional(),
+  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  destination: z.string().min(2, 'Destino deve ter pelo menos 2 caracteres'),
+  stars: z.number().int().min(1).max(5).optional(),
   description: z.string().optional(),
-  highlights:  z.array(z.string()).default([]),
-  priceFrom:   z.number().positive().optional(),
-  images:      z.array(z.string()).default([]),
-  isActive:    z.boolean().default(true),
+  highlights: z.array(z.string()).default([]),
+  priceFrom: z.number().positive().optional(),
+  images: z.array(z.string()).default([]),
+  isActive: z.boolean().default(true),
 })
 
-// Converte arrays JS para JSON strings (SQLite)
-function toDb(data: Record<string, unknown>) {
-  return {
-    ...data,
-    highlights: JSON.stringify(data.highlights ?? []),
-    images:     JSON.stringify(data.images ?? []),
-  }
-}
+// ============================================================
+// Rotas
+// ============================================================
 
-function fromDb(row: Record<string, unknown>) {
-  return {
-    ...row,
-    highlights: typeof row.highlights === 'string' ? JSON.parse(row.highlights) : row.highlights,
-    images:     typeof row.images     === 'string' ? JSON.parse(row.images)     : row.images,
-  }
-}
-
-// GET /api/hotels — lista hoteis ativos (com filtros opcionais)
+// GET /api/hotels - Lista hotéis com filtros
 router.get('/', requireAuth, async (req, res, next) => {
   try {
-    const { destination, search, all, ids } = req.query as Record<string, string>
+    const { destination, search, page = '1', limit = '20' } = req.query
+    const skip = (parseInt(page as string) - 1) * parseInt(limit as string)
 
-    const where: Record<string, unknown> = {}
-    if (all !== 'true') where.isActive = true
-    if (ids) {
-      const list = ids.split(',').map(v => v.trim()).filter(Boolean)
-      if (list.length > 0) where.id = { in: list }
+    const where: Record<string, unknown> = { isActive: true }
+
+    if (destination) {
+      where.destination = {
+        contains: destination as string,
+        mode: 'insensitive',
+      }
     }
-    if (destination) where.destination = { contains: destination }
+
     if (search) {
       where.OR = [
-        { name:        { contains: search } },
-        { destination: { contains: search } },
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { destination: { contains: search as string, mode: 'insensitive' } },
       ]
     }
 
-    const hotels = await prisma.hotel.findMany({
-      where: where as any,
-      orderBy: { name: 'asc' },
-    })
+    const [hotels, total] = await Promise.all([
+      prisma.hotel.findMany({
+        where,
+        skip,
+        take: parseInt(limit as string),
+        orderBy: { createdAt: 'desc' },
+        include: { createdBy: { select: { id: true, name: true, email: true } } },
+      }),
+      prisma.hotel.count({ where }),
+    ])
 
-    return res.json(hotels.map(h => fromDb(h as never)))
-  } catch (e) { next(e) }
+    // Parse JSON fields
+    const hotelsWithParsed = hotels.map(h => ({
+      ...h,
+      highlights: JSON.parse(h.highlights || '[]'),
+      images: JSON.parse(h.images || '[]'),
+    }))
+
+    return res.json({
+      hotels: hotelsWithParsed,
+      total,
+      page: parseInt(page as string),
+      limit: parseInt(limit as string),
+    })
+  } catch (e) {
+    next(e)
+  }
 })
 
-// GET /api/hotels/:id — detalhe
+// GET /api/hotels/:id - Detalhe do hotel
 router.get('/:id', requireAuth, async (req, res, next) => {
   try {
-    const hotel = await prisma.hotel.findUniqueOrThrow({ where: { id: req.params.id } })
-    return res.json(fromDb(hotel as never))
-  } catch (e) { next(e) }
+    const hotel = await prisma.hotel.findUnique({
+      where: { id: req.params.id },
+      include: { createdBy: { select: { id: true, name: true, email: true } } },
+    })
+
+    if (!hotel) {
+      return res.status(404).json({ error: 'Hotel não encontrado' })
+    }
+
+    return res.json({
+      ...hotel,
+      highlights: JSON.parse(hotel.highlights || '[]'),
+      images: JSON.parse(hotel.images || '[]'),
+    })
+  } catch (e) {
+    next(e)
+  }
 })
 
-// POST /api/hotels — criar hotel
+// POST /api/hotels - Criar hotel
 router.post('/', requireAuth, async (req, res, next) => {
   try {
-    const data = HotelSchema.parse(req.body)
+    const validatedData = HotelSchema.parse(req.body)
+    const userId = (req as any).userId
+
     const hotel = await prisma.hotel.create({
-      data: { ...toDb(data), createdById: req.userId! } as never,
+      data: {
+        ...validatedData,
+        highlights: JSON.stringify(validatedData.highlights),
+        images: JSON.stringify(validatedData.images),
+        createdById: userId,
+      },
+      include: { createdBy: { select: { id: true, name: true, email: true } } },
     })
-    return res.status(201).json(fromDb(hotel as never))
-  } catch (e) { next(e) }
+
+    return res.status(201).json({
+      ...hotel,
+      highlights: JSON.parse(hotel.highlights || '[]'),
+      images: JSON.parse(hotel.images || '[]'),
+    })
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({ errors: e.errors })
+    }
+    next(e)
+  }
 })
 
-// POST /api/hotels/upload-image — upload de imagem do hotel
-router.post('/upload-image', requireAuth, upload.single('file'), async (req, res, next) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'Arquivo nao enviado' })
-    const mediaUrl = `/api/media/hotel-images/${req.file.filename}`
-    return res.status(201).json({ ok: true, mediaUrl, filename: req.file.filename })
-  } catch (e) { next(e) }
-})
-
-// PATCH /api/hotels/:id — editar hotel
+// PATCH /api/hotels/:id - Editar hotel
 router.patch('/:id', requireAuth, async (req, res, next) => {
   try {
-    const data = HotelSchema.partial().parse(req.body)
-    const dbData = toDb(data)
+    const validatedData = HotelSchema.partial().parse(req.body)
+
+    // Converter arrays para JSON se fornecidos
+    const dataToUpdate = { ...validatedData }
+    if (validatedData.highlights) {
+      dataToUpdate.highlights = JSON.stringify(validatedData.highlights)
+    }
+    if (validatedData.images) {
+      dataToUpdate.images = JSON.stringify(validatedData.images)
+    }
+
     const hotel = await prisma.hotel.update({
       where: { id: req.params.id },
-      data:  dbData as never,
+      data: dataToUpdate,
+      include: { createdBy: { select: { id: true, name: true, email: true } } },
     })
-    return res.json(fromDb(hotel as never))
-  } catch (e) { next(e) }
+
+    return res.json({
+      ...hotel,
+      highlights: JSON.parse(hotel.highlights || '[]'),
+      images: JSON.parse(hotel.images || '[]'),
+    })
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({ errors: e.errors })
+    }
+    next(e)
+  }
 })
 
-// DELETE /api/hotels/:id — soft delete
+// DELETE /api/hotels/:id - Soft delete (marcar como inativo)
 router.delete('/:id', requireAuth, async (req, res, next) => {
   try {
     await prisma.hotel.update({
       where: { id: req.params.id },
-      data:  { isActive: false },
+      data: { isActive: false },
     })
-    return res.json({ ok: true })
-  } catch (e) { next(e) }
+
+    return res.json({ message: 'Hotel desativado com sucesso' })
+  } catch (e) {
+    next(e)
+  }
+})
+
+// POST /api/hotels/upload-image - Upload de imagem
+router.post('/upload-image', requireAuth, upload.single('image'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum arquivo foi enviado' })
+    }
+
+    // URL relativa para acessar a imagem
+    const imageUrl = `/api/media/${req.file.filename}`
+
+    return res.json({
+      url: imageUrl,
+      filename: req.file.filename,
+      size: req.file.size,
+    })
+  } catch (e) {
+    next(e)
+  }
 })
 
 export default router
