@@ -2,7 +2,7 @@
 // - GET: verificacao inicial do webhook (handshake Meta)
 // - POST: eventos de status e mensagens recebidas
 
-import { Router } from 'express'
+import { Router, Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { verifyWebhookSignature } from '../lib/whatsapp'
 
@@ -13,7 +13,7 @@ const VERIFY_TOKEN = process.env.WA_WEBHOOK_VERIFY_TOKEN ?? 'dev-verify-token'
 const APP_SECRET   = process.env.WA_APP_SECRET ?? ''
 
 // GET /api/webhooks/whatsapp - verificacao inicial pela Meta
-router.get('/whatsapp', (req, res) => {
+router.get('/whatsapp', (req: Request, res: Response) => {
   const mode      = req.query['hub.mode']
   const token     = req.query['hub.verify_token']
   const challenge = req.query['hub.challenge']
@@ -25,7 +25,7 @@ router.get('/whatsapp', (req, res) => {
 })
 
 // POST /api/webhooks/whatsapp - eventos da Cloud API
-router.post('/whatsapp', async (req, res) => {
+router.post('/whatsapp', async (req: Request, res: Response) => {
   // Verifica assinatura HMAC-SHA256 (obrigatorio em producao)
   if (APP_SECRET) {
     const sig = req.headers['x-hub-signature-256'] as string ?? ''
