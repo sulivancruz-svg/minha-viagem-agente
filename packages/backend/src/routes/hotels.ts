@@ -178,7 +178,7 @@ router.patch('/:id', requireAuth, async (req, res, next) => {
     const validatedData = HotelSchema.partial().parse(req.body)
 
     // Converter arrays para JSON se fornecidos
-    const dataToUpdate = { ...validatedData }
+    const dataToUpdate: any = { ...validatedData }
     if (validatedData.highlights) {
       dataToUpdate.highlights = JSON.stringify(validatedData.highlights)
     }
