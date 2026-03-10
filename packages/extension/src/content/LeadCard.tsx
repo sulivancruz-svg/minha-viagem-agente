@@ -13,7 +13,6 @@ const STAGE_META: Record<LeadStageType, { label: string; color: string }> = {
 }
 
 interface Props {
-  contactId: string
   contactName: string
   lead: LeadInfo
   hotels?: Hotel[]
@@ -27,7 +26,6 @@ interface Props {
 }
 
 export function LeadCard({
-  contactId,
   contactName,
   lead,
   hotels = [],
@@ -130,9 +128,7 @@ export function LeadCard({
       {/* Offer Builder - Montar oferta com hotel */}
       {hotels.length > 0 && lead.phoneE164 && (
         <OfferBuilder
-          contactId={contactId}
           contactName={contactName}
-          phoneE164={lead.phoneE164}
           hotels={hotels}
           campaigns={campaigns}
           onSendOffer={onSendOffer}

@@ -5,9 +5,7 @@ import React, { useState, useMemo } from 'react'
 import type { Campaign, Hotel } from '../shared/types'
 
 interface Props {
-  contactId: string
   contactName: string
-  phoneE164: string
   hotels: Hotel[]
   campaigns: Campaign[]
   onSendOffer?: (data: { campaignId?: string; hotelId: string; message: string }) => void
@@ -21,9 +19,7 @@ interface OfferDraft {
 }
 
 export function OfferBuilder({
-  contactId,
   contactName,
-  phoneE164,
   hotels,
   campaigns,
   onSendOffer,
@@ -43,10 +39,6 @@ export function OfferBuilder({
     [hotels, draft.selectedHotelId],
   )
 
-  const selectedCampaign = useMemo(
-    () => campaigns.find(c => c.id === draft.selectedCampaignId) ?? null,
-    [campaigns, draft.selectedCampaignId],
-  )
 
   // Monta preview da mensagem
   const messagePreview = useMemo(() => {

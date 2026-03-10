@@ -1021,7 +1021,6 @@ export function SidePanel({ currentChat, onClose }: Props) {
               {/* Lead info ou cadastro */}
               {lead ? (
                 <LeadCard
-                  contactId={contactId!}
                   contactName={effectiveChat.name}
                   lead={lead}
                   hotels={hotels}

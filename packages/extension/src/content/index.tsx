@@ -216,11 +216,13 @@ async function injectPanel(): Promise<void> {
 }
 
 // Injecao inicial
+injectPanel()
 
 // Reinjecao apos reload completo da pagina (edge case)
 window.addEventListener('load', () => {
   if (window.__MV_MOUNTED__) return
   if (document.getElementById('mv-root')) return
+  injectPanel()
 })
 
 const panelDockOpen: React.CSSProperties = {
