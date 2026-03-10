@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev":          "tsx watch src/index.ts",
-    "build":        "npx prisma generate && npx prisma db push && tsc -p tsconfig.json && npx prisma db seed",
-    "start":        "node dist/index.js",
+    "build":        "npx prisma generate && tsc -p tsconfig.json",
+    "start":        "npx prisma db push --skip-generate && npx tsx prisma/seed.ts && node dist/index.js",
     "db:migrate":   "prisma migrate dev",
     "db:generate":  "prisma generate",
     "db:studio":    "prisma studio",
@@ -24,7 +24,9 @@
     "node-cron":        "^3.0.3",
     "qrcode":           "^1.5.4",
     "whatsapp-web.js":  "^1.26.0",
-    "zod":              "^3.22.4"
+    "zod":              "^3.22.4",
+    "prisma":           "^5.8.1",
+    "tsx":              "^4.7.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -36,8 +38,6 @@
     "@types/jsonwebtoken":  "^9.0.5",
     "@types/multer":        "^1.4.11",
     "@types/node":          "^20.11.5",
-    "prisma":               "^5.8.1",
-    "tsx":                  "^4.7.0",
     "typescript":           "^5.3.3"
   }
 }
